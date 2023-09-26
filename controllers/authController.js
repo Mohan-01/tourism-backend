@@ -63,7 +63,7 @@ const login = catchAsync(async (req, res, next) => {
 
 const logout = (req, res) => {
     res.cookie('jwt', 'logged out', {
-        expires: new Date(Date.now() + 10 * 1000),
+        expires: new Date(1),
         httpOnly: true
     });
     res.status(200).json({status: 'success'});
