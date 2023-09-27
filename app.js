@@ -8,7 +8,7 @@ const app = express();
 app.use(cookieParser());
 app.use(express.json({limit: '50mb'}));
 app.use(cors({
-    origin: ['http://localhost:3000', 'https://tourism-backend-ce6w.onrender.com'],
+    origin: ['http://localhost:3000', 'https://tourism-6ppu.onrender.com'],
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
     credentials: true
 }));
