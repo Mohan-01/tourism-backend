@@ -47,15 +47,15 @@ const login = catchAsync(async (req, res, next) => {
     const {email, password} = req.body;
     console.log(req.body);
     // check email and password exists
-    if(!email || !password) return next(new AppError('Please provide email and password', 400));
+    if(!email || !password) return next(new AppError('Please provide email and password', 400, res));
     // check if user exists and password is correct
     const user = await User.findOne({email}).select('+password');
 
-    if(!user) return next(new AppError('Incorrect email', 400));
+    if(!user) return next(new AppError('Incorrect email', 400, res));
 
     const correct = await user.correctPassword(password, user.password);
 
-    if(!correct) return next(new AppError('Incorrect password', 401));
+    if(!correct) return next(new AppError('Incorrect password', 401, res));
 
     // if everything is ok, send token
     createSendToken(user, 200, res);
@@ -85,10 +85,10 @@ const protect = async (req, res, next) => {
 
     // Check if user still exists
     const currentUser = await User.findById(decoded.id);
-    if(!currentUser) return next(new AppError('User is no longer available. Please sign in again!', 401));
+    if(!currentUser) return next(new AppError('User is no longer available. Please sign in again!', 401, res));
 
     // Check if user change password after token issued
-    if(currentUser.changePasswordAfter(decoded.iat)) return next(new AppError('User recently changed password. Please login again!', 401));
+    if(currentUser.changePasswordAfter(decoded.iat)) return next(new AppError('User recently changed password. Please login again!', 401, res));
 
     // grant access to protected routes
     req.user = currentUser;
@@ -98,7 +98,7 @@ const protect = async (req, res, next) => {
 
 const isLoggedIn = catchAsync(async (req, res, next) => {
     // Get token and check if exists
-    if(!req.cookies || !req.cookies.jwt) return next(new AppError('Not logged in', 403));
+    if(!req.cookies || !req.cookies.jwt) return next(new AppError('Not logged in', 403, res));
     const token = req.cookies.jwt;
     // validate token
     const decoded = await util.promisify(jwt.verify)(token, process.env.JWT_SECRET);
@@ -108,7 +108,7 @@ const isLoggedIn = catchAsync(async (req, res, next) => {
     if(!currentUser) return next(new AppError('Not logged in', 403));
 
     // Check if user change password after token issued
-    if(currentUser.changePasswordAfter(decoded.iat)) return next(new AppError('Not logged in', 403));
+    if(currentUser.changePasswordAfter(decoded.iat)) return next(new AppError('Not logged in', 403, res));
 
     // grant access to protected routes
     // Thers is a logged in user
@@ -120,14 +120,14 @@ const isLoggedIn = catchAsync(async (req, res, next) => {
 });
 
 const restrictTo = (...roles) => (req, res, next) => {
-    if(!roles.includes(req.user.role)) return next(new AppError('You do not have permission to perform this action', 403));
+    if(!roles.includes(req.user.role)) return next(new AppError('You do not have permission to perform this action', 403, res));
     next();
 }
 
 const forgetPassword = catchAsync(async(req, res, next) => {
     // Get based on posted mail
     const user = await User.findOne({email: req.body.email});
-    if(!user) return next(new AppError(`There is no user with this ${req.body.email} email address.`, 404));
+    if(!user) return next(new AppError(`There is no user with this ${req.body.email} email address.`, 404, res));
 
     // Generate the random reset token
     const resetToken = user.createPasswordResetToken();
@@ -150,7 +150,7 @@ const forgetPassword = catchAsync(async(req, res, next) => {
         user.passwordResetToken = undefined;
         user.passwordResetExpires = undefined;
         await user.save({validateBeforeSave: false});
-        return next(new AppError('There was an error sending the email. Try again later!', 500));
+        return next(new AppError('There was an error sending the email. Try again later!', 500, res));
     }
 });
 
@@ -164,9 +164,9 @@ const resetPassword = async(req, res, next) => {
     });
 
     // If token has not expired, and there is user, set the new password
-    if(!user) return next(new AppError('Token is invalid or has expired', 400));
+    if(!user) return next(new AppError('Token is invalid or has expired', 400, res));
 
-    if(req.body.password.length < 8) return next(new AppError('Password must contain atleast 8 characters', 400));
+    if(req.body.password.length < 8) return next(new AppError('Password must contain atleast 8 characters', 400, res));
 
     user.password = req.body.password;
     user.passwordConfirm = req.body.passwordConfirm;
@@ -186,7 +186,7 @@ const updatePassword = catchAsync(async (req, res, next) => {
     const user = await User.findById(req.user.id).select('+password');
 
     // Check if password is correct
-    if(!(await user.correctPassword(req.body.password, user.password))) return next(new AppError('Entered incorrect password', 401));
+    if(!(await user.correctPassword(req.body.password, user.password))) return next(new AppError('Entered incorrect password', 401, res));
 
     // If everything is ok then update
     user.password = req.body.newPassword;
