@@ -7,6 +7,7 @@ const router = express.Router();
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
 router.get('/logout', authController.logout);
+router.get('/isLoggedIn', authController.isLoggedIn);
 
 router.post('/forgetPassword', authController.forgetPassword);
 router.patch('/resetPassword', authController.resetPassword);
@@ -16,7 +17,8 @@ router.use(authController.protect);
 
 router.get('/getme', userController.getMe);
 router.patch('/updateMyPassword', authController.updatePassword);
-router.post('/updateMe', userController.uploadUserPhoto, userController.resizeUserPhoto, userController.updateMe);
+// router.post('/updateMe', userController.uploadUserPhoto, userController.resizeUserPhoto, userController.updateMe);
+router.patch('/updateMe', userController.updateMe);
 router.delete('/deleteMe', userController.deleteMe);
 
 // Protect and Restrict all routes after this middleware

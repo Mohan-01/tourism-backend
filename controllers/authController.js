@@ -75,6 +75,10 @@ const protect = async (req, res, next) => {
     if(req.headers.authorization && req.headers.authorization.startsWith('Bearer')) token = req.headers.authorization.split(' ')[1];
     else if(req.cookies.jwt) token = req.cookies.jwt
     if(!token) return next(new AppError('You are not logged in. Please log in to get access.', 400));
+    // if(!token) return res.status(400).json({
+    //     statusbar: 'fail',
+    //     message: 'You are not logged in. Please log in to get access.'
+    // });
     
     // validate token
     const decoded = await util.promisify(jwt.verify)(token, process.env.JWT_SECRET);
@@ -94,22 +98,25 @@ const protect = async (req, res, next) => {
 
 const isLoggedIn = catchAsync(async (req, res, next) => {
     // Get token and check if exists
-    if(!req.cookies || !req.cookies.jwt) return next();
-    
+    if(!req.cookies || !req.cookies.jwt) return next(new AppError('Not logged in', 403));
+    const token = req.cookies.jwt;
     // validate token
-    const decoded = await utils.promisify(jwt.verify)(token, process.env.JWT_SECRET);
+    const decoded = await util.promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
     // Check if user still exists
     const currentUser = await User.findById(decoded.id);
-    if(!currentUser) return next();
+    if(!currentUser) return next(new AppError('Not logged in', 403));
 
     // Check if user change password after token issued
-    if(currentUser.changePasswordAfter(decoded.iat)) return next();
+    if(currentUser.changePasswordAfter(decoded.iat)) return next(new AppError('Not logged in', 403));
 
     // grant access to protected routes
     // Thers is a logged in user
     res.locals.user = currentUser;
-    next();
+    res.status(200).json({
+        statusbar: 'success',
+        data: currentUser
+    })
 });
 
 const restrictTo = (...roles) => (req, res, next) => {
@@ -182,7 +189,7 @@ const updatePassword = catchAsync(async (req, res, next) => {
     if(!(await user.correctPassword(req.body.password, user.password))) return next(new AppError('Entered incorrect password', 401));
 
     // If everything is ok then update
-    user.password = req.body.password;
+    user.password = req.body.newPassword;
     user.passwordConfirm = req.body.passwordConfirm;
     await user.save();
 
